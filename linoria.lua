@@ -8,7 +8,14 @@ local TweenService = game:GetService('TweenService');
 local RenderStepped = RunService.RenderStepped;
 local LocalPlayer = Players.LocalPlayer;
 local Mouse = LocalPlayer:GetMouse();
-
+local ProximityPromptService = game:GetService("ProximityPromptService");
+local HoldingPrompt = false;
+ProximityPromptService.PromptButtonHoldBegan:Connect(function(prompt)
+    HoldingPrompt = true;
+end);
+ProximityPromptService.PromptButtonHoldEnded:Connect(function(prompt)
+    HoldingPrompt = false;
+end);
 local ProtectGui = protectgui or (syn and syn.protect_gui) or (function() end);
 
 local ScreenGui = Instance.new('ScreenGui');
@@ -161,33 +168,54 @@ function Library:CreateLabel(Properties, IsHud)
     return Library:Create(_Instance, Properties);
 end;
 
-function Library:MakeDraggable(Instance, Cutoff)
-    Instance.Active = true;
+function Library:MakeDraggable(UIFrame, Cutoff)
+    UIFrame.Active = true
+    local outline
+    local dragging = false
 
-    Instance.InputBegan:Connect(function(Input)
-        if Input.UserInputType == Enum.UserInputType.MouseButton1 then
-            local ObjPos = Vector2.new(
-                Mouse.X - Instance.AbsolutePosition.X,
-                Mouse.Y - Instance.AbsolutePosition.Y
-            );
+    UIFrame.InputBegan:Connect(function(input)
+        if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
 
-            if ObjPos.Y > (Cutoff or 40) then
-                return;
-            end;
+        local absPos = UIFrame.AbsolutePosition
+        local absSize = UIFrame.AbsoluteSize
+        local mouseOffset = Vector2.new(Mouse.X - absPos.X, Mouse.Y - absPos.Y)
 
-            while InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
-                Instance.Position = UDim2.new(
-                    0,
-                    Mouse.X - ObjPos.X + (Instance.Size.X.Offset * Instance.AnchorPoint.X),
-                    0,
-                    Mouse.Y - ObjPos.Y + (Instance.Size.Y.Offset * Instance.AnchorPoint.Y)
-                );
+        if mouseOffset.Y > (Cutoff or 40) then return end
 
-                RenderStepped:Wait();
-            end;
-        end;
+        -- create outline if it doesn't exist
+        if not outline then
+            outline = Instance.new("Frame")
+            outline.Size = UIFrame.Size
+            outline.Position = UIFrame.Position
+            outline.AnchorPoint = UIFrame.AnchorPoint
+            outline.BackgroundTransparency = 0.7
+            outline.BorderSizePixel = 2
+            outline.BorderColor3 = Color3.fromRGB(255, 0, 0)
+            outline.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+            outline.ZIndex = UIFrame.ZIndex + 1
+            outline.Parent = UIFrame.Parent
+        end
+
+        dragging = true
+
+        while InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
+            local parentPos = UIFrame.Parent.AbsolutePosition
+            local anchor = UIFrame.AnchorPoint
+            local size = UIFrame.AbsoluteSize
+            local newX = Mouse.X - mouseOffset.X - parentPos.X + (size.X * anchor.X)
+            local newY = Mouse.Y - mouseOffset.Y - parentPos.Y + (size.Y * anchor.Y)
+            outline.Position = UDim2.new(0, newX, 0, newY)
+            RenderStepped:Wait()
+        end
+
+        if dragging and outline then
+            UIFrame.Position = outline.Position
+            outline:Destroy()
+            outline = nil
+            dragging = false
+        end
     end)
-end;
+end
 
 function Library:AddToolTip(InfoStr, HoverInstance)
     local X, Y = Library:GetTextBounds(InfoStr, Library.Font, 14);
@@ -1281,11 +1309,13 @@ do
             end;
         end);
 
-        Library:GiveSignal(InputService.InputBegan:Connect(function(Input)
-            if Library.IgnoreWhileTyping and InputService:GetFocusedTextBox() then
+        Library:GiveSignal(InputService.InputBegan:Connect(function(Input, gpe)
+            if Library.IgnoreWhileTyping and InputService:GetFocusedTextBox() and gpe then
                 return;
             end;
-
+            if HoldingPrompt then
+                return;
+            end;
             if (not Picking) then
                 if KeyPicker.Mode == 'Toggle' then
                     local Key = KeyPicker.Value;
@@ -3513,100 +3543,102 @@ function Library:CreateWindow(...)
     local Toggled = false;
     local Fading = false;
 
-    function Library:Toggle()
-        if Fading then
-            return;
-        end;
+	function Library:Toggle()
+		if Fading then
+			return
+		end
 
-        local FadeTime = Config.MenuFadeTime;
-        Fading = true;
-        Toggled = (not Toggled);
-        ModalElement.Modal = Toggled;
+		local FadeTime = Config.MenuFadeTime or 0
+		Fading = true
+		Toggled = not Toggled
+		ModalElement.Modal = Toggled
 
-        if Toggled then
-            -- A bit scuffed, but if we're going from not toggled -> toggled we want to show the frame immediately so that the fade is visible.
-            Outer.Visible = true;
+		if Toggled then
+			Outer.Visible = true
 
-            task.spawn(function()
-                -- TODO: add cursor fade?
-                local State = InputService.MouseIconEnabled;
+			task.spawn(function()
+				local State = InputService.MouseIconEnabled
 
-                local Cursor = Drawing.new('Triangle');
-                Cursor.Thickness = 1;
-                Cursor.Filled = true;
-                Cursor.Visible = true;
+				local Cursor = Drawing.new('Triangle')
+				Cursor.Thickness = 1
+				Cursor.Filled = true
+				Cursor.Visible = true
 
-                local CursorOutline = Drawing.new('Triangle');
-                CursorOutline.Thickness = 1;
-                CursorOutline.Filled = false;
-                CursorOutline.Color = Color3.new(0, 0, 0);
-                CursorOutline.Visible = true;
+				local CursorOutline = Drawing.new('Triangle')
+				CursorOutline.Thickness = 1
+				CursorOutline.Filled = false
+				CursorOutline.Color = Color3.new(0, 0, 0)
+				CursorOutline.Visible = true
 
-                while Toggled and ScreenGui.Parent do
-                    InputService.MouseIconEnabled = false;
+				while Toggled and ScreenGui.Parent do
+					InputService.MouseIconEnabled = false
 
-                    local mPos = InputService:GetMouseLocation();
+					local mPos = InputService:GetMouseLocation()
 
-                    Cursor.Color = Library.AccentColor;
+					Cursor.Color = Library.AccentColor
 
-                    Cursor.PointA = Vector2.new(mPos.X, mPos.Y);
-                    Cursor.PointB = Vector2.new(mPos.X + 16, mPos.Y + 6);
-                    Cursor.PointC = Vector2.new(mPos.X + 6, mPos.Y + 16);
+					Cursor.PointA = Vector2.new(mPos.X, mPos.Y)
+					Cursor.PointB = Vector2.new(mPos.X + 16, mPos.Y + 6)
+					Cursor.PointC = Vector2.new(mPos.X + 6, mPos.Y + 16)
 
-                    CursorOutline.PointA = Cursor.PointA;
-                    CursorOutline.PointB = Cursor.PointB;
-                    CursorOutline.PointC = Cursor.PointC;
+					CursorOutline.PointA = Cursor.PointA
+					CursorOutline.PointB = Cursor.PointB
+					CursorOutline.PointC = Cursor.PointC
 
-                    RenderStepped:Wait();
-                end;
+					RenderStepped:Wait()
+				end
 
-                InputService.MouseIconEnabled = State;
+				InputService.MouseIconEnabled = State
 
-                Cursor:Remove();
-                CursorOutline:Remove();
-            end);
-        end;
+				Cursor:Remove()
+				CursorOutline:Remove()
+			end)
+		end
 
-        for _, Desc in next, Outer:GetDescendants() do
-            local Properties = {};
+		for _, Desc in next, Outer:GetDescendants() do
+			local Properties = {}
 
-            if Desc:IsA('ImageLabel') then
-                table.insert(Properties, 'ImageTransparency');
-                table.insert(Properties, 'BackgroundTransparency');
-            elseif Desc:IsA('TextLabel') or Desc:IsA('TextBox') then
-                table.insert(Properties, 'TextTransparency');
-            elseif Desc:IsA('Frame') or Desc:IsA('ScrollingFrame') then
-                table.insert(Properties, 'BackgroundTransparency');
-            elseif Desc:IsA('UIStroke') then
-                table.insert(Properties, 'Transparency');
-            end;
+			if Desc:IsA('ImageLabel') then
+				table.insert(Properties, 'ImageTransparency')
+				table.insert(Properties, 'BackgroundTransparency')
+			elseif Desc:IsA('TextLabel') or Desc:IsA('TextBox') then
+				table.insert(Properties, 'TextTransparency')
+			elseif Desc:IsA('Frame') or Desc:IsA('ScrollingFrame') then
+				table.insert(Properties, 'BackgroundTransparency')
+			elseif Desc:IsA('UIStroke') then
+				table.insert(Properties, 'Transparency')
+			end
 
-            local Cache = TransparencyCache[Desc];
+			local Cache = TransparencyCache[Desc]
+			if not Cache then
+				Cache = {}
+				TransparencyCache[Desc] = Cache
+			end
 
-            if (not Cache) then
-                Cache = {};
-                TransparencyCache[Desc] = Cache;
-            end;
+			for _, Prop in next, Properties do
+				if not Cache[Prop] then
+					Cache[Prop] = Desc[Prop]
+				end
 
-            for _, Prop in next, Properties do
-                if not Cache[Prop] then
-                    Cache[Prop] = Desc[Prop];
-                end;
+				if Cache[Prop] == 1 then
+					continue
+				end
 
-                if Cache[Prop] == 1 then
-                    continue;
-                end;
+				if FadeTime > 0 then
+					TweenService:Create(Desc, TweenInfo.new(FadeTime, Enum.EasingStyle.Linear), { [Prop] = Toggled and Cache[Prop] or 1 }):Play()
+				else
+					Desc[Prop] = Toggled and Cache[Prop] or 1
+				end
+			end
+		end
 
-                TweenService:Create(Desc, TweenInfo.new(FadeTime, Enum.EasingStyle.Linear), { [Prop] = Toggled and Cache[Prop] or 1 }):Play();
-            end;
-        end;
+		if FadeTime > 0 then
+			task.wait(FadeTime)
+		end
 
-        task.wait(FadeTime);
-
-        Outer.Visible = Toggled;
-
-        Fading = false;
-    end
+		Outer.Visible = Toggled
+		Fading = false
+	end
 
     Library:GiveSignal(InputService.InputBegan:Connect(function(Input, Processed)
         if type(Library.ToggleKeybind) == 'table' and Library.ToggleKeybind.Type == 'KeyPicker' then
