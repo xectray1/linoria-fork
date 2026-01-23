@@ -181,23 +181,25 @@ function Library:MakeDraggable(UIFrame, Cutoff)
         local mouseOffset = Vector2.new(Mouse.X - absPos.X, Mouse.Y - absPos.Y)
 
         if mouseOffset.Y > (Cutoff or 40) then return end
-
-        -- create outline if it doesn't exist
         if not outline then
             outline = Instance.new("Frame")
             outline.Size = UIFrame.Size
             outline.Position = UIFrame.Position
             outline.AnchorPoint = UIFrame.AnchorPoint
-            outline.BackgroundTransparency = 0.7
-            outline.BorderSizePixel = 2
-            outline.BorderColor3 = Color3.fromRGB(255, 0, 0)
-            outline.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+            outline.BackgroundTransparency = 1
+            outline.BorderSizePixel = 0
             outline.ZIndex = UIFrame.ZIndex + 1
             outline.Parent = UIFrame.Parent
+            outline.ZIndex = 1000;
+
+            local stroke = Instance.new("UIStroke")
+            stroke.Thickness = 2
+            stroke.Color = Library.AccentColor
+            stroke.ZIndex = 1000;
+            stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+            stroke.Parent = outline
         end
-
         dragging = true
-
         while InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
             local parentPos = UIFrame.Parent.AbsolutePosition
             local anchor = UIFrame.AnchorPoint
