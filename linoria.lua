@@ -157,7 +157,6 @@ function Library:CreateLabel(Properties, IsHud)
         TextColor3 = Library.FontColor;
         TextSize = 16;
         TextStrokeTransparency = 0;
-        RichText = true;
     });
 
     Library:ApplyTextStroke(_Instance);
@@ -3033,6 +3032,7 @@ function Library:CreateWindow(...)
         TextXAlignment = Enum.TextXAlignment.Left;
         ZIndex = 1;
         Parent = Inner;
+        RichText = true;
     });
 
     local MainSectionOuter = Library:Create('Frame', {
