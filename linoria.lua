@@ -1210,15 +1210,18 @@ do
             elseif KeyPicker.Mode == 'Hold' then
                 if KeyPicker.Value == 'None' then
                     return false;
-                end
-
+                end;
                 local Key = KeyPicker.Value;
-
                 if Key == 'MB1' or Key == 'MB2' then
                     return Key == 'MB1' and InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1)
                         or Key == 'MB2' and InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2);
                 else
-                    return InputService:IsKeyDown(Enum.KeyCode[KeyPicker.Value]);
+                    local KeyEnum = Enum.KeyCode[Key];
+                    if KeyEnum then
+                        return InputService:IsKeyDown(KeyEnum);
+                    else
+                        return false;
+                    end;
                 end;
             else
                 return KeyPicker.Toggled;
