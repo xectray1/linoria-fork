@@ -12,9 +12,8 @@ local ProximityPromptService = game:GetService("ProximityPromptService");
 local HoldingPrompt = false;
 ProximityPromptService.PromptButtonHoldBegan:Connect(function(prompt)
     HoldingPrompt = true;
-end);
-ProximityPromptService.PromptButtonHoldEnded:Connect(function(prompt)
-    HoldingPrompt = false;
+	RenderStepped:Wait();
+	HoldingPrompt = false;
 end);
 local ProtectGui = protectgui or (syn and syn.protect_gui) or (function() end);
 
