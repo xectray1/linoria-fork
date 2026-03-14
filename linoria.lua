@@ -21,7 +21,7 @@ local ScreenGui = Instance.new('ScreenGui');
 ProtectGui(ScreenGui);
 
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global;
-ScreenGui.Parent = gethui();
+ScreenGui.Parent = game:GetService("Players").LocalPlayer.PlayerGui
 ScreenGui.DisplayOrder = 10;
 local Toggles = {};
 local Options = {};
@@ -125,18 +125,20 @@ function Library:AttemptSave()
 end;
 
 function Library:Create(Class, Properties)
-    local _Instance = Class;
+    local _Instance
 
     if type(Class) == 'string' then
-        _Instance = Instance.new(Class);
-    end;
+        _Instance = Instance.new(Class)
+    else
+        _Instance = Class
+    end
 
     for Property, Value in next, Properties do
-        _Instance[Property] = Value;
-    end;
+        _Instance[Property] = Value
+    end
 
-    return _Instance;
-end;
+    return _Instance
+end
 
 function Library:ApplyTextStroke(Inst)
     Inst.TextStrokeTransparency = 1;
