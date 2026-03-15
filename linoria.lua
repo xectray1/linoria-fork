@@ -1957,6 +1957,7 @@ do
 
             Library:SafeCallback(Toggle.Callback, Toggle.Value);
             Library:SafeCallback(Toggle.Changed, Toggle.Value);
+            setthreadidentity(8);
             Library:UpdateDependencyBoxes();
         end;
 
