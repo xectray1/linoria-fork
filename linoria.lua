@@ -403,28 +403,23 @@ function Library:GetDarkerColor(Color)
 end
 
 function Library:AddToRegistry(Instance, Properties, IsHud)
-    local Idx = #Library.Registry + 1
-    local Data = { Instance = Instance; Properties = Properties; Idx = Idx }
-    table.insert(Library.Registry, Data)
+    local Data = { Instance = Instance; Properties = Properties }
+    Library.Registry[Instance] = Data
     Library.RegistryMap[Instance] = Data
-    if IsHud then table.insert(Library.HudRegistry, Data) end
+    if IsHud then Library.HudRegistry[Instance] = Data end
 end
 
 function Library:RemoveFromRegistry(Instance)
     local Data = Library.RegistryMap[Instance]
     if Data then
-        for Idx = #Library.Registry, 1, -1 do
-            if Library.Registry[Idx] == Data then table.remove(Library.Registry, Idx) end
-        end
-        for Idx = #Library.HudRegistry, 1, -1 do
-            if Library.HudRegistry[Idx] == Data then table.remove(Library.HudRegistry, Idx) end
-        end
+        Library.Registry[Instance] = nil
+        Library.HudRegistry[Instance] = nil
         Library.RegistryMap[Instance] = nil
     end
 end
 
 function Library:UpdateColorsUsingRegistry()
-    for Idx, Object in next, Library.Registry do
+    for _, Object in next, Library.Registry do
         for Property, ColorIdx in next, Object.Properties do
             if type(ColorIdx) == 'string' then
                 Object.Instance[Property] = Library[ColorIdx]
@@ -444,6 +439,9 @@ function Library:Unload()
         local Connection = table.remove(Library.Signals, Idx)
         Connection:Disconnect()
     end
+    Library.Registry = {}
+    Library.RegistryMap = {}
+    Library.HudRegistry = {}
     if Library.OnUnload then Library.OnUnload() end
     ScreenGui:Destroy()
 end
